@@ -6,3 +6,5 @@ SUMMARY_PREFIX = """
 ・要点3
 ```
 """
+
+SEARCH_QUERY = "cat: math.ST"

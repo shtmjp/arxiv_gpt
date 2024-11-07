@@ -1,4 +1,5 @@
 import google.generativeai as genai
+
 import settings
 from log import get_logger_for_test
 
