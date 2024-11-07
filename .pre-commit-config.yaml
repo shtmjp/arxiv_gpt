@@ -7,7 +7,6 @@ repos:
       - id: ruff
         name: Ruff check
         description: "Run 'ruff check' for extremely fast Python linting"
-        args: [--fix]
 
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.383
