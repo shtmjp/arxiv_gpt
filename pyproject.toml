@@ -7,7 +7,14 @@ requires-python = ">=3.9"
 readme = "README.md"
 license = { file = "LICENSE" }
 
-dependencies = []
+dependencies = [
+    "arxiv>=2.1.3",
+    "discord-webhook>=1.3.0",
+    "discord>=2.3.2",
+    "google-generativeai>=0.8.3",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+]
 
 [tool.uv]
 dev-dependencies = [
@@ -16,3 +23,6 @@ dev-dependencies = [
     "pytest>=8.3.3",
     "ruff>=0.6.9",
 ]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
