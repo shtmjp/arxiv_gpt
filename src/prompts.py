@@ -7,4 +7,6 @@ SUMMARY_PREFIX = """
 ```
 """
 
+SEARCH_QUERY_LLAG = "ti: %22 lead lag %22 OR abs: %22 lead lag %22"
+# "lead-lag" does not work maybe due to the hyphen
 SEARCH_QUERY = "cat: math.ST"

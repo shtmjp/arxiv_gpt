@@ -27,13 +27,11 @@ def get_summary(result: arxiv.Result) -> str:
 
 
 def main() -> None:
-    query = SEARCH_QUERY
-
     # arxiv APIで最新の論文情報を取得する
     client = arxiv.Client()
     search = arxiv.Search(
-        query=query,  # 検索クエリ
-        max_results=200,  # 取得する論文数
+        query=SEARCH_QUERY,  # 検索クエリ
+        max_results=100,  # 取得する論文数
         sort_by=arxiv.SortCriterion.SubmittedDate,  # 論文を投稿された日付でソートする
         sort_order=arxiv.SortOrder.Descending,  # 新しい論文から順に取得する
     )
