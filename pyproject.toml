@@ -1,0 +1,18 @@
+[project]
+name = "default"
+version = "0.1.0"
+description = "This repository contains configurations to set up a Python development environment using VSCode's Dev Container feature. The environment includes uv and Ruff."
+
+requires-python = ">=3.9"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+dependencies = []
+
+[tool.uv]
+dev-dependencies = [
+    "pre-commit>=4.0.0",
+    "pyright>=1.1.383",
+    "pytest>=8.3.3",
+    "ruff>=0.6.9",
+]
