@@ -9,10 +9,6 @@ repos:
         description: "Run 'ruff check' for extremely fast Python linting"
         args: [--fix]
 
-      - id: ruff-format
-        name: Ruff format
-        description: "Run 'ruff format' for extremely fast Python formatting"
-
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.383
     hooks:
