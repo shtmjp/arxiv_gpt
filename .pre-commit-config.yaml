@@ -14,13 +14,3 @@ repos:
       - id: pyright
         name: Pyright type check
         description: "Type Check by Pyright"
-
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint
-        name: Lint Dockerfiles
-        description: Runs hadolint to lint Dockerfiles
-        language: system
-        types: ["dockerfile"]
-        entry: hadolint
