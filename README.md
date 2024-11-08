@@ -1,3 +1,6 @@
 # Arxiv_gpt
 
-summarize papers by Google Gemini API and send them to discord
+- Summarize papers and send them to discord.
+  - Use Google Gemini API
+  - Avoid duplicates by recording posts to Spreadsheet
+  - Deployed on render.com
