@@ -71,8 +71,7 @@ class GSSPaperDAO(AbstractPaperDAO):
     def __init__(self) -> None:
         """Initialize GSSPaperDAO."""
         gc = gspread.service_account(  # type: ignore[attr-defined]
-            filename=Path(__file__).resolve().parents[1]
-            / "credentials/gs_credentials.json"
+            filename=Path(__file__).resolve().parents[1] / "gs_credentials.json"
         )
         sh = gc.open_by_key(SHEET_ID)
         self.worksheet = sh.get_worksheet(0)  # worksheet for papers
