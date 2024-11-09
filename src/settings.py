@@ -10,6 +10,7 @@ if _dotenv_path.exists():
     load_dotenv(_dotenv_path)
 
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+# localではDISCORD_WEBHOOK_URLはデバッグ用URLを設定しておく
+# 本番環境では別に設定
 DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
-DEBUG_DISCORD_WEBHOOK_URL = os.environ["DEBUG_DISCORD_WEBHOOK_URL"]
 SHEET_ID = os.environ["SHEET_ID"]

@@ -14,7 +14,8 @@ import pandas as pd
 
 from settings import SHEET_ID
 
-# implemented media (paper sources)
+# Implemented media (paper sources)
+# Other sources like semantic scholar can be added in the future
 Media = Literal["arxiv"]
 
 
