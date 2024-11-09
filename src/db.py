@@ -65,6 +65,7 @@ class AbstractPaperDAO(ABC):
         """Add paper to DB."""
 
 
+# Google Spread Sheet用のDAO
 class GSSPaperDAO(AbstractPaperDAO):
     """Google Spread Sheet Paper DAO."""
 
