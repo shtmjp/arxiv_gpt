@@ -1,18 +1,15 @@
 import random
+import time
 
 import arxiv
 import google.generativeai as genai
 from discord_webhook import DiscordWebhook
 
-from db import AbstractPaperDAO, GSSPaperDAO
+from db import AbstractPaperDAO, GSSPaperDAO, arxivresult2paperinfo
 from prompts import SEARCH_QUERY, SUMMARY_PREFIX
-from settings import DEBUG_DISCORD_WEBHOOK_URL, DISCORD_WEBHOOK_URL, GEMINI_API_KEY
+from settings import DISCORD_WEBHOOK_URL, GEMINI_API_KEY
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-debug = True
-if debug:
-    DISCORD_WEBHOOK_URL = DEBUG_DISCORD_WEBHOOK_URL
 
 
 def summarize_paper(result: arxiv.Result) -> str:
@@ -46,21 +43,29 @@ def main() -> None:
     # arxiv APIで最新の論文情報を取得する
     result_list = search_arxiv(SEARCH_QUERY, max_results=100)
 
+    # すでにDBにある論文は除外する
+    # in set の計算量はO(1)なので、idsをsetに変換しておく
     dao: AbstractPaperDAO = GSSPaperDAO()
     ids = dao.get_paper_ids("arxiv")
-    # すでにDBにある論文は除外する(計算量がO(n^2)なので改善するべき)
-    result_list = [r for r in result_list if r.entry_id not in ids]
+    result_list = [r for r in result_list if r.entry_id not in set(ids)]
     # ランダムにnum_papersの数だけ選ぶ
     num_papers = min(3, len(result_list))
     results = random.sample(result_list, k=num_papers)  # random.sample(l, 0) = []
 
-    # 要約をdiscordに投稿する
     summary_list: list[str] = [""] * num_papers
     for i, result in enumerate(results):
+        # 要約をdiscordに投稿
         summary = summarize_paper(result)
         webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL, content=summary)
         webhook.execute()
         summary_list[i] = summary
+
+        # databaseに追加
+        info = arxivresult2paperinfo(result, summary)
+        dao.add_paper(info)
+
+        # 5秒待つ
+        time.sleep(5)
 
 
 if __name__ == "__main__":
