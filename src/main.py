@@ -17,7 +17,7 @@ def summarize_paper(result: arxiv.Result) -> str:
     prompt = SUMMARY_PREFIX
     prompt += f"title: {result.title}\nbody: {result.summary}"
     # generate summary
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
     summary = response.text
     title_en = result.title
