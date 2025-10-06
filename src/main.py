@@ -1,5 +1,9 @@
+import json
+import os
 import random
 import time
+from dataclasses import dataclass
+from typing import Iterable
 
 import arxiv
 import google.generativeai as genai
@@ -7,7 +11,11 @@ from discord_webhook import DiscordWebhook
 
 from db import AbstractPaperDAO, GSSPaperDAO, arxivresult2paperinfo
 from prompts import SEARCH_QUERY, SUMMARY_PREFIX
-from settings import DISCORD_WEBHOOK_URL, GEMINI_API_KEY
+from settings import (
+    DISCORD_WEBHOOK_URL,
+    EXTRA_ARXIV_SEARCH_CONFIGS,
+    GEMINI_API_KEY,
+)
 
 genai.configure(api_key=GEMINI_API_KEY)
 
@@ -28,6 +36,69 @@ def summarize_paper(result: arxiv.Result) -> str:
     return f"発行日: {date_str}\n{result.entry_id}\n{title_en}\n{title}\n{body}\n"
 
 
+@dataclass(frozen=True)
+class SearchTask:
+    query: str
+    webhook_url: str
+
+
+def load_search_tasks() -> list[SearchTask]:
+    """Load search tasks from settings."""
+
+    tasks = [SearchTask(query=SEARCH_QUERY, webhook_url=DISCORD_WEBHOOK_URL)]
+
+    if not EXTRA_ARXIV_SEARCH_CONFIGS:
+        return tasks
+
+    try:
+        raw_configs = json.loads(EXTRA_ARXIV_SEARCH_CONFIGS)
+    except json.JSONDecodeError as exc:  # pragma: no cover - configuration error
+        msg = "Failed to parse EXTRA_ARXIV_SEARCH_CONFIGS as JSON."
+        raise ValueError(msg) from exc
+
+    if not isinstance(raw_configs, list):  # pragma: no cover - configuration error
+        msg = "EXTRA_ARXIV_SEARCH_CONFIGS must be a JSON array."
+        raise ValueError(msg)
+
+    for raw in raw_configs:
+        if not isinstance(raw, dict):  # pragma: no cover - configuration error
+            msg = "Each extra search config must be a JSON object."
+            raise ValueError(msg)
+
+        query = raw.get("query")
+        if not isinstance(query, str) or not query:  # pragma: no cover - configuration error
+            msg = "Each extra search config must include a non-empty 'query'."
+            raise ValueError(msg)
+
+        webhook_url = raw.get("webhook_url")
+        webhook_env = raw.get("webhook_env")
+
+        if (webhook_url is None) == (webhook_env is None):
+            msg = (
+                "Each extra search config must include either 'webhook_url' or "
+                "'webhook_env', but not both."
+            )
+            raise ValueError(msg)
+
+        if webhook_env is not None:
+            if not isinstance(webhook_env, str) or not webhook_env:
+                msg = "'webhook_env' must be a non-empty string."
+                raise ValueError(msg)
+            try:
+                webhook_url = os.environ[webhook_env]
+            except KeyError as exc:  # pragma: no cover - configuration error
+                msg = f"Environment variable '{webhook_env}' is not set."
+                raise KeyError(msg) from exc
+        else:
+            if not isinstance(webhook_url, str) or not webhook_url:
+                msg = "'webhook_url' must be a non-empty string when provided."
+                raise ValueError(msg)
+
+        tasks.append(SearchTask(query=query, webhook_url=webhook_url))
+
+    return tasks
+
+
 def search_arxiv(query: str, max_results: int) -> list[arxiv.Result]:
     client = arxiv.Client()
     search = arxiv.Search(
@@ -39,33 +110,47 @@ def search_arxiv(query: str, max_results: int) -> list[arxiv.Result]:
     return list(client.results(search))
 
 
+def post_summaries(
+    dao: AbstractPaperDAO,
+    tasks: Iterable[SearchTask],
+    existing_ids: set[str],
+) -> None:
+    for task in tasks:
+        # arxiv APIで最新の論文情報を取得する
+        result_list = search_arxiv(task.query, max_results=100)
+
+        # すでにDBにある論文は除外する
+        result_list = [r for r in result_list if r.entry_id not in existing_ids]
+
+        # ランダムにnum_papersの数だけ選ぶ
+        num_papers = min(3, len(result_list))
+        if num_papers == 0:
+            continue
+
+        results = random.sample(result_list, k=num_papers)
+
+        for result in results:
+            # 要約をdiscordに投稿
+            summary = summarize_paper(result)
+            webhook = DiscordWebhook(url=task.webhook_url, content=summary)
+            webhook.execute()
+
+            # databaseに追加
+            info = arxivresult2paperinfo(result, summary)
+            dao.add_paper(info)
+            existing_ids.add(result.entry_id)
+
+            # 5秒待つ
+            time.sleep(5)
+
+
 def main() -> None:
-    # arxiv APIで最新の論文情報を取得する
-    result_list = search_arxiv(SEARCH_QUERY, max_results=100)
+    tasks = load_search_tasks()
 
-    # すでにDBにある論文は除外する
-    # in set の計算量はO(1)なので、idsをsetに変換しておく
     dao: AbstractPaperDAO = GSSPaperDAO()
-    ids = dao.get_paper_ids("arxiv")
-    result_list = [r for r in result_list if r.entry_id not in set(ids)]
-    # ランダムにnum_papersの数だけ選ぶ
-    num_papers = min(3, len(result_list))
-    results = random.sample(result_list, k=num_papers)  # random.sample(l, 0) = []
+    existing_ids = set(dao.get_paper_ids("arxiv"))
 
-    summary_list: list[str] = [""] * num_papers
-    for i, result in enumerate(results):
-        # 要約をdiscordに投稿
-        summary = summarize_paper(result)
-        webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL, content=summary)
-        webhook.execute()
-        summary_list[i] = summary
-
-        # databaseに追加
-        info = arxivresult2paperinfo(result, summary)
-        dao.add_paper(info)
-
-        # 5秒待つ
-        time.sleep(5)
+    post_summaries(dao=dao, tasks=tasks, existing_ids=existing_ids)
 
 
 if __name__ == "__main__":
