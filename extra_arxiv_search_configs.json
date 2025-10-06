@@ -1,0 +1,14 @@
+[
+  {
+    "query": "cat: math.ST",
+    "webhook_url": "https://discord.com/api/webhooks/1302140973333090334/pUPFiP8sxN7XRMJkOCBA0-kxLSPqEPgYaUf1DHpZvx_qyYfIRs6eniEgdpn9j9MZBoBI"
+  },
+  {
+    "query": "ti: %22 point process %22 OR abs: %22 point proess %22",
+    "webhook_url": "https://discord.com/api/webhooks/1424666741736476744/4ScYGq2eIREY88Xhm_F4KkVQbCSOdprMQZP9KVYjnJMA88vynpXadsDXpoUkUNobXac4"
+  },
+  {
+    "query": "ti: %22 lead lag %22 OR abs: %22 lead lag %22",
+    "webhook_url": "https://discord.com/api/webhooks/1424667001296650281/WjaJi-Wwg23-yNAwqgCk6R83ZDGGzlBp5N2O49wYid89toWuTdjaWx5HgYIQvx-gw5oS"
+  }
+]

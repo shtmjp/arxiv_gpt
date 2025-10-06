@@ -2,17 +2,16 @@ import json
 import os
 import random
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import arxiv
 import google.generativeai as genai
 from discord_webhook import DiscordWebhook
 
 from db import AbstractPaperDAO, GSSPaperDAO, arxivresult2paperinfo
-from prompts import SEARCH_QUERY, SUMMARY_PREFIX
+from prompts import SUMMARY_PREFIX
 from settings import (
-    DISCORD_WEBHOOK_URL,
     EXTRA_ARXIV_SEARCH_CONFIGS,
     GEMINI_API_KEY,
 )
@@ -25,7 +24,7 @@ def summarize_paper(result: arxiv.Result) -> str:
     prompt = SUMMARY_PREFIX
     prompt += f"title: {result.title}\nbody: {result.summary}"
     # generate summary
-    model = genai.GenerativeModel("gemini-2.5-pro")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
     summary = response.text
     title_en = result.title
@@ -44,14 +43,16 @@ class SearchTask:
 
 def load_search_tasks() -> list[SearchTask]:
     """Load search tasks from settings."""
-
-    tasks = [SearchTask(query=SEARCH_QUERY, webhook_url=DISCORD_WEBHOOK_URL)]
+    # tasks = [SearchTask(query=SEARCH_QUERY, webhook_url=DISCORD_WEBHOOK_URL)]
+    tasks = []
 
     if not EXTRA_ARXIV_SEARCH_CONFIGS:
         return tasks
 
     try:
-        raw_configs = json.loads(EXTRA_ARXIV_SEARCH_CONFIGS)
+        # EXTRA_ARXIV_SEARCH_CONFIGS is path to a JSON file
+        with open(EXTRA_ARXIV_SEARCH_CONFIGS, encoding="utf-8") as f:
+            raw_configs = json.loads(f.read())
     except json.JSONDecodeError as exc:  # pragma: no cover - configuration error
         msg = "Failed to parse EXTRA_ARXIV_SEARCH_CONFIGS as JSON."
         raise ValueError(msg) from exc
@@ -66,7 +67,9 @@ def load_search_tasks() -> list[SearchTask]:
             raise ValueError(msg)
 
         query = raw.get("query")
-        if not isinstance(query, str) or not query:  # pragma: no cover - configuration error
+        if (
+            not isinstance(query, str) or not query
+        ):  # pragma: no cover - configuration error
             msg = "Each extra search config must include a non-empty 'query'."
             raise ValueError(msg)
 
@@ -89,10 +92,9 @@ def load_search_tasks() -> list[SearchTask]:
             except KeyError as exc:  # pragma: no cover - configuration error
                 msg = f"Environment variable '{webhook_env}' is not set."
                 raise KeyError(msg) from exc
-        else:
-            if not isinstance(webhook_url, str) or not webhook_url:
-                msg = "'webhook_url' must be a non-empty string when provided."
-                raise ValueError(msg)
+        elif not isinstance(webhook_url, str) or not webhook_url:
+            msg = "'webhook_url' must be a non-empty string when provided."
+            raise ValueError(msg)
 
         tasks.append(SearchTask(query=query, webhook_url=webhook_url))
 
