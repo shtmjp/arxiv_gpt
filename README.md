@@ -4,6 +4,15 @@
   - Use Google Gemini API
   - Avoid duplicates by recording posts to Spreadsheet
 - Multiple arXiv queries can be configured with `EXTRA_ARXIV_SEARCH_CONFIGS`
+- Replies with 「解説して」 now trigger an additional Gemini 2.5 Pro analysis that is
+  converted into a PDF and uploaded to the same Discord channel.
+
+## Explanation requests
+
+- Set `DISCORD_BOT_TOKEN` so the bot can read replies and post files to the
+  corresponding channel.
+- Optionally override `EXPLANATION_STATE_PATH` to change where the bot stores
+  metadata about posted summaries.
 
 ## Configuring multiple queries
 

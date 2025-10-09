@@ -10,10 +10,20 @@ import google.generativeai as genai
 from discord_webhook import DiscordWebhook
 
 from db import AbstractPaperDAO, GSSPaperDAO, arxivresult2paperinfo
+from explain import (
+    DiscordAPI,
+    ExplanationGenerator,
+    ExplanationPDFRenderer,
+    MessageStore,
+    PostedPaper,
+    process_explain_requests,
+)
 from prompts import SUMMARY_PREFIX
 from settings import (
     EXTRA_ARXIV_SEARCH_CONFIGS,
     GEMINI_API_KEY,
+    DISCORD_BOT_TOKEN,
+    EXPLANATION_STATE_PATH,
 )
 
 genai.configure(api_key=GEMINI_API_KEY)
@@ -116,6 +126,7 @@ def post_summaries(
     dao: AbstractPaperDAO,
     tasks: Iterable[SearchTask],
     existing_ids: set[str],
+    store: MessageStore | None = None,
 ) -> None:
     for task in tasks:
         # arxiv APIで最新の論文情報を取得する
@@ -134,8 +145,32 @@ def post_summaries(
         for result in results:
             # 要約をdiscordに投稿
             summary = summarize_paper(result)
-            webhook = DiscordWebhook(url=task.webhook_url, content=summary)
-            webhook.execute()
+            webhook = DiscordWebhook(
+                url=task.webhook_url,
+                content=summary,
+                wait=True,
+            )
+            response = webhook.execute()
+            if store is not None and response is not None:
+                payload: dict[str, object] | None = None
+                if hasattr(response, "json"):
+                    try:
+                        payload = response.json()
+                    except Exception:  # pragma: no cover - defensive
+                        payload = None
+                elif isinstance(response, dict):  # pragma: no cover - fallback
+                    payload = response
+                if isinstance(payload, dict):
+                    channel_id_raw = payload.get("channel_id")
+                    message_id_raw = payload.get("id")
+                    if channel_id_raw and message_id_raw:
+                        store.add_posted_paper(
+                            PostedPaper(
+                                paper_id=result.entry_id,
+                                channel_id=str(channel_id_raw),
+                                message_id=str(message_id_raw),
+                            )
+                        )
 
             # databaseに追加
             info = arxivresult2paperinfo(result, summary)
@@ -152,7 +187,20 @@ def main() -> None:
     dao: AbstractPaperDAO = GSSPaperDAO()
     existing_ids = set(dao.get_paper_ids("arxiv"))
 
-    post_summaries(dao=dao, tasks=tasks, existing_ids=existing_ids)
+    store = MessageStore(EXPLANATION_STATE_PATH)
+
+    post_summaries(dao=dao, tasks=tasks, existing_ids=existing_ids, store=store)
+
+    if DISCORD_BOT_TOKEN:
+        discord_api = DiscordAPI(DISCORD_BOT_TOKEN)
+        generator = ExplanationGenerator()
+        renderer = ExplanationPDFRenderer()
+        process_explain_requests(
+            store=store,
+            discord_api=discord_api,
+            generator=generator,
+            renderer=renderer,
+        )
 
 
 if __name__ == "__main__":
